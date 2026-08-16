@@ -1,12 +1,72 @@
 server:
-  port: 8085
+  port: ${PORT:8085}
 
 spring:
   application:
     name: notification-service
-  config:
-    import: "configserver:http://config-server:8888"
 
+  # Disable Config Server — config is injected via Railway environment variables
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      enabled: false
+
+  # ── Kafka ─────────────────────────────────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  # ── Mail (SMTP) ───────────────────────────────────────────────────────
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    connection-timeout: 10000
+    timeout: 10000
+    write-timeout: 10000
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+# ── Notification feature flags ────────────────────────────────────────
+notification:
+  mail:
+    enabled: ${MAIL_ENABLED:true}
+
+# ── App ───────────────────────────────────────────────────────────────
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+# ── Eureka (disabled — not used on Railway) ───────────────────────────
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# ── Actuator ──────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    mail:
+      enabled: false
+
+# ── Swagger / OpenAPI ─────────────────────────────────────────────────
 springdoc:
   api-docs:
     path: /v3/api-docs

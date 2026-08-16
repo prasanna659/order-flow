@@ -1,12 +1,79 @@
 server:
-  port: 8083
+  port: ${PORT:8083}
 
 spring:
   application:
     name: order-service
-  config:
-    import: "configserver:http://config-server:8888"
 
+  # Disable Config Server — config is injected via Railway environment variables
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      enabled: false
+
+  # ── Database ──────────────────────────────────────────────────────────
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/orderdb?createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:rootpass}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  # ── Kafka ─────────────────────────────────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+# ── JWT (for validating tokens forwarded by gateway) ──────────────────
+jwt:
+  secret: ${JWT_SECRET:orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
+# ── Inter-service URLs (replace lb:// with direct Railway URLs) ────────
+services:
+  inventory-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
+  payment-url: ${PAYMENT_SERVICE_URL:http://localhost:8084}
+
+# ── Resilience4j circuit breakers ─────────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      paymentService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+
+# ── Eureka (disabled — not used on Railway) ───────────────────────────
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# ── Actuator ──────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers
+
+# ── Swagger / OpenAPI ─────────────────────────────────────────────────
 springdoc:
   api-docs:
     path: /v3/api-docs

@@ -2,6 +2,7 @@ package com.orderflow.order.client;
 
 import com.orderflow.order.dto.ChargeResult;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -13,8 +14,11 @@ public class PaymentClient {
 
     private final WebClient webClient;
 
-    public PaymentClient(WebClient.Builder loadBalancedWebClientBuilder) {
-        this.webClient = loadBalancedWebClientBuilder.baseUrl("http://payment-service").build();
+    // Base URL injected from application.yml / Railway env var PAYMENT_SERVICE_URL.
+    // Falls back to localhost for local dev without Eureka.
+    public PaymentClient(WebClient.Builder webClientBuilder,
+                         @Value("${services.payment-url:http://localhost:8084}") String paymentServiceUrl) {
+        this.webClient = webClientBuilder.baseUrl(paymentServiceUrl).build();
     }
 
     @CircuitBreaker(name = "paymentService", fallbackMethod = "chargeFallback")

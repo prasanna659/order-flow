@@ -1,11 +1,23 @@
 server:
-  port: 8082
+  port: ${PORT:8082}
 
 spring:
   application:
     name: inventory-service
+
+  # Disable Config Server — config is injected via Railway environment variables
   config:
-    import: "configserver:http://config-server:8888"
+    import: "optional:configserver:"
+  cloud:
+    config:
+      enabled: false
+
+  # ── Database ──────────────────────────────────────────────────────────
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/inventorydb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgrespass}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
   jpa:
     hibernate:
       ddl-auto: update
@@ -14,6 +26,26 @@ spring:
     init:
       mode: always
 
+  # ── JWT (for validating tokens forwarded by gateway) ──────────────────
+jwt:
+  secret: ${JWT_SECRET:orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
+# ── Eureka (disabled — not used on Railway) ───────────────────────────
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# ── Actuator ──────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers
+
+# ── Swagger / OpenAPI ─────────────────────────────────────────────────
 springdoc:
   api-docs:
     path: /v3/api-docs

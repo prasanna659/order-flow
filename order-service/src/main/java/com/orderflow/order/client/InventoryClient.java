@@ -2,6 +2,7 @@ package com.orderflow.order.client;
 
 import com.orderflow.order.dto.OrderItemDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -13,8 +14,11 @@ public class InventoryClient {
 
     private final WebClient webClient;
 
-    public InventoryClient(WebClient.Builder loadBalancedWebClientBuilder) {
-        this.webClient = loadBalancedWebClientBuilder.baseUrl("http://inventory-service").build();
+    // Base URL injected from application.yml / Railway env var INVENTORY_SERVICE_URL.
+    // Falls back to localhost for local dev without Eureka.
+    public InventoryClient(WebClient.Builder webClientBuilder,
+                           @Value("${services.inventory-url:http://localhost:8082}") String inventoryServiceUrl) {
+        this.webClient = webClientBuilder.baseUrl(inventoryServiceUrl).build();
     }
 
     // Circuit breaker: if inventory-service is failing repeatedly (not just
