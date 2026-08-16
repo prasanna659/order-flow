@@ -1,0 +1,130 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "configserver:http://config-server:8888"
+  cloud:
+    gateway:
+      routes:
+        # ── Public routes ─────────────────────────────────────────────────
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          # No Auth filter — register/login can't require a token you don't have yet.
+
+        # ── Google OAuth2 flow (public — browser-initiated redirect) ──────
+        # /oauth2/authorization/google  → auth-service initiates Google redirect
+        # /login/oauth2/code/google     → Google redirects back here with auth code
+        # Both must be proxied WITHOUT the Auth JWT filter.
+        - id: oauth2-authorization
+          uri: lb://auth-service
+          predicates:
+            - Path=/oauth2/**
+
+        - id: oauth2-callback
+          uri: lb://auth-service
+          predicates:
+            - Path=/login/oauth2/**
+
+        - id: inventory-browse
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/products
+            - Method=GET
+          # Public — anyone can browse the catalog.
+
+        # ── Protected routes ──────────────────────────────────────────────
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - Auth
+
+        - id: payment-transactions
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/transactions/**
+          filters:
+            - Auth
+
+        # ── Health endpoints (public — used by SystemHealthPage) ──────────
+        # Each service exposes /actuator/health via spring-boot-starter-actuator.
+        # The frontend polls these through the gateway so CORS isn't an issue.
+        - id: health-order
+          uri: lb://order-service
+          predicates:
+            - Path=/health/orders
+          filters:
+            - RewritePath=/health/orders, /actuator/health
+
+        - id: health-auth
+          uri: lb://auth-service
+          predicates:
+            - Path=/health/auth
+          filters:
+            - RewritePath=/health/auth, /actuator/health
+
+        - id: health-inventory
+          uri: lb://inventory-service
+          predicates:
+            - Path=/health/inventory
+          filters:
+            - RewritePath=/health/inventory, /actuator/health
+
+        - id: health-payment
+          uri: lb://payment-service
+          predicates:
+            - Path=/health/payment
+          filters:
+            - RewritePath=/health/payment, /actuator/health
+
+        - id: health-notification
+          uri: lb://notification-service
+          predicates:
+            - Path=/health/notification
+          filters:
+            - RewritePath=/health/notification, /actuator/health
+
+        # ── Swagger / OpenAPI docs (public) ───────────────────────────────
+        - id: swagger-order
+          uri: lb://order-service
+          predicates:
+            - Path=/docs/orders/**
+          filters:
+            - RewritePath=/docs/orders/(?<segment>.*), /${segment}
+
+        - id: swagger-auth
+          uri: lb://auth-service
+          predicates:
+            - Path=/docs/auth/**
+          filters:
+            - RewritePath=/docs/auth/(?<segment>.*), /${segment}
+
+        - id: swagger-inventory
+          uri: lb://inventory-service
+          predicates:
+            - Path=/docs/inventory/**
+          filters:
+            - RewritePath=/docs/inventory/(?<segment>.*), /${segment}
+
+        - id: swagger-payment
+          uri: lb://payment-service
+          predicates:
+            - Path=/docs/payment/**
+          filters:
+            - RewritePath=/docs/payment/(?<segment>.*), /${segment}
+
+        - id: swagger-notification
+          uri: lb://notification-service
+          predicates:
+            - Path=/docs/notification/**
+          filters:
+            - RewritePath=/docs/notification/(?<segment>.*), /${segment}
+
+app:
+  frontend-url: http://localhost:3000

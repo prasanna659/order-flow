@@ -1,0 +1,22 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # In docker-compose this path is a mounted volume pointing at
+          # the /config-repo folder at the project root. Locally (outside
+          # docker) point this at the absolute path to config-repo instead.
+          search-locations: file:/config-repo
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

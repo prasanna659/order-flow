@@ -1,0 +1,20 @@
+# This is the SHARED config every service pulls in via
+# spring.config.import: configserver:http://config-server:8888
+# Anything common (eureka location, actuator exposure) lives here once
+# instead of being copy-pasted into 8 separate application.yml files.
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers
+
+jwt:
+  secret: orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min
+  expiration-ms: 3600000

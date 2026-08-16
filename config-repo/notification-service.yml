@@ -1,0 +1,41 @@
+spring:
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    # Spring Boot maps these directly onto JavaMailSenderImpl — guaranteed to apply.
+    connection-timeout: 10000   # ms — TCP connect to smtp.gmail.com:587
+    timeout: 10000              # ms — waiting for SMTP server response
+    write-timeout: 10000        # ms — writing data to SMTP socket
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          # Jakarta Mail session-level timeouts (belt-and-suspenders alongside the above).
+          # These are the raw Jakarta Mail property names passed into the Session.
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+notification:
+  mail:
+    enabled: ${MAIL_ENABLED:true}
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+management:
+  health:
+    mail:
+      enabled: false

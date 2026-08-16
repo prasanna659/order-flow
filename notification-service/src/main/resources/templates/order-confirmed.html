@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Order Confirmed</title>
+<style>
+  body { margin:0; padding:0; background:#0A0D14; font-family:'Helvetica Neue',Arial,sans-serif; color:#E8ECF1; }
+  .container { max-width:560px; margin:32px auto; background:#12151F; border:1px solid #262B3B; border-radius:16px; overflow:hidden; }
+  .header { background:linear-gradient(135deg,#6D5CF5,#8B7CFF); padding:32px 32px 24px; text-align:center; }
+  .header h1 { margin:0; font-size:24px; font-weight:700; color:#fff; letter-spacing:-0.5px; }
+  .header .badge { display:inline-block; margin-top:8px; background:rgba(255,255,255,0.2); color:#fff; font-size:11px; font-family:monospace; padding:4px 12px; border-radius:999px; }
+  .body { padding:28px 32px; }
+  .greeting { font-size:16px; margin:0 0 8px; }
+  .subtext { font-size:13px; color:#8E95AB; margin:0 0 24px; }
+  .order-id { font-family:monospace; font-size:11px; color:#6D5CF5; background:#6D5CF520; border:1px solid #6D5CF540; border-radius:6px; padding:8px 12px; margin-bottom:20px; word-break:break-all; }
+  .total-row { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:#1A1E2C; border-radius:10px; margin-bottom:20px; }
+  .total-label { font-size:13px; color:#8E95AB; }
+  .total-amount { font-size:20px; font-weight:700; color:#6D5CF5; font-family:monospace; }
+  .items-title { font-size:12px; font-weight:600; color:#8E95AB; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 10px; }
+  .item-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #262B3B; font-size:13px; }
+  .item-row:last-child { border-bottom:none; }
+  .item-name { color:#E8ECF1; }
+  .item-qty { color:#8E95AB; font-size:12px; margin-top:2px; }
+  .item-price { color:#6D5CF5; font-family:monospace; font-weight:600; }
+  .saga-box { margin-top:24px; background:#1A1E2C; border:1px solid #262B3B; border-radius:10px; padding:16px 20px; }
+  .saga-title { font-size:11px; font-family:monospace; color:#8E95AB; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 12px; }
+  .saga-step { font-size:12px; color:#2FD98A; margin:4px 0; font-family:monospace; }
+  .footer { padding:20px 32px; border-top:1px solid #262B3B; text-align:center; font-size:11px; color:#8E95AB; }
+  .footer a { color:#6D5CF5; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Order Confirmed ✓</h1>
+    <span class="badge">OrderFlow · Distributed Systems Platform</span>
+  </div>
+  <div class="body">
+    <p class="greeting">Hi <strong th:text="${username ?: 'there'}">there</strong>,</p>
+    <p class="subtext">Your order has been confirmed and payment was processed successfully.</p>
+
+    <div class="order-id">Order ID: <span th:text="${orderId}">ORD-XXXX</span></div>
+
+    <div class="total-row">
+      <span class="total-label">Total charged</span>
+      <span class="total-amount">$<span th:text="${totalAmount}">0.00</span></span>
+    </div>
+
+    <th:block th:if="${items != null and !items.empty}">
+      <p class="items-title">Order Items</p>
+      <div th:each="item : ${items}" class="item-row">
+        <div>
+          <div class="item-name" th:text="${item.productName}">Product</div>
+          <div class="item-qty">Qty: <span th:text="${item.quantity}">1</span></div>
+        </div>
+        <div class="item-price">$<span th:text="${#numbers.formatDecimal(item.price * item.quantity, 1, 2)}">0.00</span></div>
+      </div>
+    </th:block>
+
+    <div class="saga-box">
+      <p class="saga-title">Saga Execution Log</p>
+      <div class="saga-step">✓ Order Created</div>
+      <div class="saga-step">✓ Inventory Reserved</div>
+      <div class="saga-step">✓ Payment Charged</div>
+      <div class="saga-step">✓ Kafka Event Published</div>
+      <div class="saga-step">✓ Notification Delivered</div>
+    </div>
+
+    <p style="font-size:12px;color:#8E95AB;margin-top:20px;">
+      Placed on <span th:text="${orderDate}">today</span>
+    </p>
+  </div>
+  <div class="footer">
+    OrderFlow &mdash; Event-Driven Order Processing Demo &nbsp;|&nbsp;
+    <a th:href="${frontendUrl}" href="http://localhost:3000">View Platform</a>
+  </div>
+</div>
+</body>
+</html> 

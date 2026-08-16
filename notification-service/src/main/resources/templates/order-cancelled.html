@@ -1,0 +1,72 @@
+<!DOCTYPE html> 
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Order Cancelled</title>
+<style>
+  body { margin:0; padding:0; background:#0A0D14; font-family:'Helvetica Neue',Arial,sans-serif; color:#E8ECF1; }
+  .container { max-width:560px; margin:32px auto; background:#12151F; border:1px solid #262B3B; border-radius:16px; overflow:hidden; }
+  .header { background:linear-gradient(135deg,#FB5570,#ff7a8a); padding:32px 32px 24px; text-align:center; }
+  .header h1 { margin:0; font-size:24px; font-weight:700; color:#fff; letter-spacing:-0.5px; }
+  .header .badge { display:inline-block; margin-top:8px; background:rgba(255,255,255,0.2); color:#fff; font-size:11px; font-family:monospace; padding:4px 12px; border-radius:999px; }
+  .body { padding:28px 32px; }
+  .greeting { font-size:16px; margin:0 0 8px; }
+  .subtext { font-size:13px; color:#8E95AB; margin:0 0 24px; }
+  .order-id { font-family:monospace; font-size:11px; color:#FB5570; background:#FB557020; border:1px solid #FB557040; border-radius:6px; padding:8px 12px; margin-bottom:20px; word-break:break-all; }
+  .reason-box { background:#FB557010; border:1px solid #FB557030; border-radius:10px; padding:14px 18px; margin-bottom:20px; }
+  .reason-title { font-size:11px; font-family:monospace; color:#FB5570; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 6px; }
+  .reason-text { font-size:13px; color:#E8ECF1; margin:0; }
+  .saga-box { margin-top:24px; background:#1A1E2C; border:1px solid #262B3B; border-radius:10px; padding:16px 20px; }
+  .saga-title { font-size:11px; font-family:monospace; color:#8E95AB; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 12px; }
+  .saga-done { font-size:12px; color:#2FD98A; margin:4px 0; font-family:monospace; }
+  .saga-fail { font-size:12px; color:#FB5570; margin:4px 0; font-family:monospace; }
+  .saga-comp { font-size:12px; color:#F59E0B; margin:4px 0; font-family:monospace; }
+  .footer { padding:20px 32px; border-top:1px solid #262B3B; text-align:center; font-size:11px; color:#8E95AB; }
+  .footer a { color:#6D5CF5; text-decoration:none; }
+  .retry-btn { display:inline-block; margin-top:16px; background:#6D5CF5; color:#fff; font-size:13px; font-weight:600; padding:10px 24px; border-radius:8px; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Order Cancelled</h1>
+    <span class="badge">OrderFlow · Saga Compensation Executed</span>
+  </div>
+  <div class="body">
+    <p class="greeting">Hi <strong th:text="${username ?: 'there'}">there</strong>,</p>
+    <p class="subtext">Unfortunately your order could not be completed. Any reserved inventory has been automatically released.</p>
+
+    <div class="order-id">Order ID: <span th:text="${orderId}">ORD-XXXX</span></div>
+
+    <th:block th:if="${failureReason != null}">
+      <div class="reason-box">
+        <p class="reason-title">Failure Reason</p>
+        <p class="reason-text" th:text="${failureReason}">Unknown error</p>
+      </div>
+    </th:block>
+
+    <div class="saga-box">
+      <p class="saga-title">Saga Compensation Log</p>
+      <div class="saga-done">✓ Order Created</div>
+      <div class="saga-done">✓ Inventory Reserved</div>
+      <div class="saga-fail">✗ Payment Failed</div>
+      <div class="saga-comp">↩ Compensating Transaction: Stock Released</div>
+      <div class="saga-fail">✗ Order Cancelled</div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;">
+      <a th:href="${frontendUrl + '/catalog'}" href="http://localhost:3000/catalog" class="retry-btn">Try Again</a>
+    </div>
+
+    <p style="font-size:12px;color:#8E95AB;margin-top:20px;">
+      Attempted on <span th:text="${orderDate}">today</span>
+    </p>
+  </div>
+  <div class="footer">
+    OrderFlow &mdash; Event-Driven Order Processing Demo &nbsp;|&nbsp;
+    <a th:href="${frontendUrl}" href="http://localhost:3000">View Platform</a>
+  </div>
+</div>
+</body>
+</html>
