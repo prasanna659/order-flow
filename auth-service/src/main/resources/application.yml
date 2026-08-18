@@ -13,15 +13,36 @@ spring:
       enabled: false
 
   # ── Database ──────────────────────────────────────────────────────────
+  # Railway injects PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD automatically
+  # when a Postgres plugin is attached. SPRING_DATASOURCE_URL can also be set
+  # directly as an override in Railway's Variables UI.
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/authdb?createDatabaseIfNotExist=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:rootpass}
-    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:authdb}}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:postgrespass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # Allow up to 30 s for Railway's Postgres to become reachable on cold start
+      connection-timeout: 30000
+      # -1 means "do not fail fast on startup" — lets Hikari retry until
+      # connection-timeout is reached instead of aborting immediately
+      initialization-fail-timeout: -1
+      maximum-pool-size: 5
+      minimum-idle: 1
+
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: false
+    properties:
+      hibernate:
+        # Explicit dialect prevents Hibernate trying to read JDBC metadata
+        # before a connection is available, which causes startup failures
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   kafka:
