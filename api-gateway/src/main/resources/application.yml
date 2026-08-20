@@ -135,7 +135,7 @@ spring:
 
 # ── JWT (gateway validates tokens before forwarding) ──────────────────
 jwt:
-  secret: ${JWT_SECRET:orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min}
+  secret: ${JWT_SECRET:}
 
 # ── App ───────────────────────────────────────────────────────────────
 app:

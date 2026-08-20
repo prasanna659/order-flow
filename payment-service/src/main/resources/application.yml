@@ -21,7 +21,7 @@ spring:
 
 # ── JWT (for validating tokens forwarded by gateway) ──────────────────
 jwt:
-  secret: ${JWT_SECRET:orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min}
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 # ── Stripe / Payment provider ─────────────────────────────────────────

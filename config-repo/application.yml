@@ -16,5 +16,5 @@ management:
         include: health,info,circuitbreakers
 
 jwt:
-  secret: orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min
-  expiration-ms: 3600000
+  secret: ${JWT_SECRET:}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}

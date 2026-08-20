@@ -13,13 +13,10 @@ spring:
       enabled: false
 
   # ── Database ──────────────────────────────────────────────────────────
-  # Railway injects PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD automatically
-  # when a Postgres plugin is attached. SPRING_DATASOURCE_URL can also be set
-  # directly as an override in Railway's Variables UI.
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:orderdb}}
-    username: ${PGUSER:postgres}
-    password: ${PGPASSWORD:rootpass}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/orderdb}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
@@ -28,16 +25,9 @@ spring:
       minimum-idle: 1
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          lob:
-            non_contextual_creation: true
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   kafka:
@@ -48,10 +38,10 @@ spring:
 
 # ── JWT (for validating tokens forwarded by gateway) ──────────────────
 jwt:
-  secret: ${JWT_SECRET:orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min}
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
-# ── Inter-service URLs (replace lb:// with direct Railway URLs) ────────
+# ── Inter-service URLs ────────────────────────────────────────────────
 services:
   inventory-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
   payment-url: ${PAYMENT_SERVICE_URL:http://localhost:8084}

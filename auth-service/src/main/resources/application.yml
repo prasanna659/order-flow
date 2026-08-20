@@ -13,36 +13,25 @@ spring:
       enabled: false
 
   # ── Database ──────────────────────────────────────────────────────────
-  # Railway injects PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD automatically
-  # when a Postgres plugin is attached. SPRING_DATASOURCE_URL can also be set
-  # directly as an override in Railway's Variables UI.
+  # Priority order:
+  #   1. SPRING_DATASOURCE_URL (set this in Railway Variables UI)
+  #   2. DATABASE_URL (some Railway templates use this name)
+  #   3. Falls back to localhost for local dev
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:authdb}}
-    username: ${PGUSER:postgres}
-    password: ${PGPASSWORD:postgrespass}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/authdb}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     hikari:
-      # Allow up to 30 s for Railway's Postgres to become reachable on cold start
       connection-timeout: 30000
-      # -1 means "do not fail fast on startup" — lets Hikari retry until
-      # connection-timeout is reached instead of aborting immediately
       initialization-fail-timeout: -1
       maximum-pool-size: 5
       minimum-idle: 1
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: false
-    properties:
-      hibernate:
-        # Explicit dialect prevents Hibernate trying to read JDBC metadata
-        # before a connection is available, which causes startup failures
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          lob:
-            non_contextual_creation: true
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   kafka:
@@ -70,7 +59,7 @@ spring:
 
 # ── JWT ───────────────────────────────────────────────────────────────
 jwt:
-  secret: ${JWT_SECRET:orderflow-super-secret-key-change-me-in-real-deployments-32bytes-min}
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 # ── App ───────────────────────────────────────────────────────────────
