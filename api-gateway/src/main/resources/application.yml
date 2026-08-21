@@ -21,7 +21,7 @@ spring:
       routes:
         # ── Public routes ───────────────────────────────────────────────
         - id: auth-service
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: ${AUTH_SERVICE_URL:authservice-b230.up.railway.app}
           predicates:
             - Path=/api/auth/**
           # No Auth filter — register/login can't require a token you don't have yet.
@@ -30,12 +30,12 @@ spring:
         # /oauth2/authorization/google  → auth-service initiates Google redirect
         # /login/oauth2/code/google     → Google redirects back here with auth code
         - id: oauth2-authorization
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: ${AUTH_SERVICE_URL:authservice-b230.up.railway.app}
           predicates:
             - Path=/oauth2/**
 
         - id: oauth2-callback
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: ${AUTH_SERVICE_URL:authservice-b230.up.railway.app}
           predicates:
             - Path=/login/oauth2/**
 
@@ -48,7 +48,7 @@ spring:
 
         # ── Protected routes ────────────────────────────────────────────
         - id: order-service
-          uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+          uri: ${ORDER_SERVICE_URL:orderservice-374f.up.railway.app}
           predicates:
             - Path=/api/orders/**
           filters:
@@ -63,14 +63,14 @@ spring:
 
         # ── Health endpoints (public — used by frontend health page) ────
         - id: health-order
-          uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+          uri: ${ORDER_SERVICE_URL:orderservice-374f.up.railway.app}
           predicates:
             - Path=/health/orders
           filters:
             - RewritePath=/health/orders, /actuator/health
 
         - id: health-auth
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: ${AUTH_SERVICE_URL:authservice-b230.up.railway.app}
           predicates:
             - Path=/health/auth
           filters:
@@ -91,7 +91,7 @@ spring:
             - RewritePath=/health/payment, /actuator/health
 
         - id: health-notification
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          uri: ${NOTIFICATION_SERVICE_URL:notificationservice91dd.up.railway.app}
           predicates:
             - Path=/health/notification
           filters:
@@ -99,14 +99,14 @@ spring:
 
         # ── Swagger / OpenAPI docs (public) ────────────────────────────
         - id: swagger-order
-          uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+          uri: ${ORDER_SERVICE_URL:orderservice-374f.up.railway.app}
           predicates:
             - Path=/docs/orders/**
           filters:
             - RewritePath=/docs/orders/(?<segment>.*), /${segment}
 
         - id: swagger-auth
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: ${AUTH_SERVICE_URL:authservice-b230.up.railway.app}
           predicates:
             - Path=/docs/auth/**
           filters:
@@ -127,7 +127,7 @@ spring:
             - RewritePath=/docs/payment/(?<segment>.*), /${segment}
 
         - id: swagger-notification
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          uri: ${NOTIFICATION_SERVICE_URL:notificationservice91dd.up.railway.app}
           predicates:
             - Path=/docs/notification/**
           filters:
@@ -139,7 +139,7 @@ jwt:
 
 # ── App ───────────────────────────────────────────────────────────────
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL:https://order-flow-ten-kohl.vercel.app/}
 
 # ── Eureka (disabled — not used on Railway) ───────────────────────────
 eureka:
