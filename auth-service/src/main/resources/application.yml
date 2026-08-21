@@ -56,7 +56,7 @@ spring:
               - openid
               - profile
               - email
-            redirect-uri: "${OAUTH2_REDIRECT_URI:http://localhost:8081/login/oauth2/code/google}"
+            redirect-uri: "${OAUTH2_REDIRECT_URI:/login/oauth2/code/google}"
 
 # ── JWT ───────────────────────────────────────────────────────────────
 jwt:
@@ -65,7 +65,7 @@ jwt:
 
 # ── App ───────────────────────────────────────────────────────────────
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL:http://order-flow-ten-kohl.vercel.app}
 
 # ── Eureka (disabled — not used on Railway) ───────────────────────────
 eureka:

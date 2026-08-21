@@ -47,7 +47,7 @@ notification:
 
 # ── App ───────────────────────────────────────────────────────────────
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL:http://order-flow-ten-kohl.vercel.app}
 
 # ── Eureka (disabled — not used on Railway) ───────────────────────────
 eureka:
