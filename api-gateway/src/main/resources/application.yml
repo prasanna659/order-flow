@@ -139,7 +139,7 @@ jwt:
 
 # ── App ───────────────────────────────────────────────────────────────
 app:
-  frontend-url: ${FRONTEND_URL:https://order-flow-ten-kohl.vercel.app/}
+  frontend-url: ${FRONTEND_URL:https://order-flow-ten-kohl.vercel.app}
 
 # ── Eureka (disabled — not used on Railway) ───────────────────────────
 eureka:

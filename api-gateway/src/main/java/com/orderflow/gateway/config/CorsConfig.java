@@ -24,8 +24,13 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
         
-        // Allow specific frontend origin instead of wildcard to avoid duplicate headers
-        corsConfig.setAllowedOrigins(List.of(frontendUrl));
+        // Allow the deployed frontend origin plus localhost for local dev.
+        // Origins must NOT have a trailing slash — exact match is required.
+        corsConfig.setAllowedOrigins(List.of(
+            frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl,
+            "http://localhost:3000",
+            "http://localhost:5173"
+        ));
         
         // Allow credentials (cookies, authorization headers)
         corsConfig.setAllowCredentials(true);
