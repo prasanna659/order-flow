@@ -5,7 +5,6 @@ import com.orderflow.order.dto.PageResponse;
 import com.orderflow.order.dto.PlaceOrderRequest;
 import com.orderflow.order.entity.Order;
 import com.orderflow.order.entity.OrderStatus;
-import com.orderflow.order.exception.ResourceNotFoundException;
 import com.orderflow.order.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -56,7 +55,7 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) OrderStatus status) {
-        
+
         // Authorization check: ensure user can only see their own orders
         // In a real app, this would come from JWT token validation
         Page<Order> ordersPage = orderService.getOrdersForUserPaginated(userId, status, page, size);
