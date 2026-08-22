@@ -60,8 +60,16 @@ public class GatewayExceptionHandler implements ErrorWebExceptionHandler {
             String body = objectMapper.writeValueAsString(errorResponse);
             DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
 
-            log.error("Gateway error: status={}, path={}, error={}", status.value(), 
+            log.error("Gateway error: status={}, path={}, error={}", status.value(),
                     exchange.getRequest().getPath(), ex.getMessage(), ex);
+
+            if (status == HttpStatus.NOT_FOUND) {
+                log.warn("No route matched: {} {}", exchange.getRequest().getMethod(),
+                        exchange.getRequest().getPath());
+            } else {
+                log.error("Gateway error: status={}, path={}, error={}",
+                        status.value(), exchange.getRequest().getPath(), ex.getMessage(), ex);
+            }
 
             return response.writeWith(Mono.just(buffer));
         } catch (JsonProcessingException e) {

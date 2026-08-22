@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -216,6 +217,14 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
         log.error("Illegal state: {}", ex.getMessage());
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", "ILLEGAL_STATE", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleNoHandlerFound(NoHandlerFoundException ex, HttpServletRequest request) {
+        log.warn("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", "NO_HANDLER",
+                "No endpoint found for " + ex.getHttpMethod() + " " + ex.getRequestURL(), request);
     }
 
     @ExceptionHandler(Exception.class)
