@@ -52,49 +52,49 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
-        log.error("Resource not found: {}", ex.getMessage());
+        log.error("Resource not found: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDuplicateResource(DuplicateResourceException ex, HttpServletRequest request) {
-        log.error("Duplicate resource: {}", ex.getMessage());
+        log.error("Duplicate resource: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ErrorResponse handleBusinessException(BusinessException ex, HttpServletRequest request) {
-        log.error("Business error: {}", ex.getMessage());
+        log.error("Business error: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(InventoryUnavailableException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleInventoryUnavailable(InventoryUnavailableException ex, HttpServletRequest request) {
-        log.error("Inventory unavailable: {}", ex.getMessage());
+        log.error("Inventory unavailable: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(PaymentFailedException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handlePaymentFailed(PaymentFailedException ex, HttpServletRequest request) {
-        log.error("Payment failed: {}", ex.getMessage());
+        log.error("Payment failed: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(OrderAlreadyConfirmedException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleOrderAlreadyConfirmed(OrderAlreadyConfirmedException ex, HttpServletRequest request) {
-        log.error("Order already confirmed: {}", ex.getMessage());
+        log.error("Order already confirmed: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(OrderCancelledException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleOrderCancelled(OrderCancelledException ex, HttpServletRequest request) {
-        log.error("Order cancelled: {}", ex.getMessage());
+        log.error("Order cancelled: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getErrorCode(), ex.getMessage(), request);
     }
 
@@ -102,57 +102,54 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleKafkaPublish(KafkaPublishException ex, HttpServletRequest request) {
         log.error("Kafka publish failed: {}", ex.getMessage(), ex);
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", ex.getErrorCode(), 
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", ex.getErrorCode(),
                 "Order confirmed but notification event could not be published", request);
     }
 
     @ExceptionHandler(ServiceUnavailableException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleServiceUnavailable(ServiceUnavailableException ex, HttpServletRequest request) {
-        log.error("Service unavailable: {}", ex.getMessage());
+        log.error("Service unavailable: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(CallNotPermittedException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleCircuitOpen(CallNotPermittedException ex, HttpServletRequest request) {
-        log.error("Circuit breaker is open: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "CIRCUIT_OPEN", 
+        log.error("Circuit breaker is open: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "CIRCUIT_OPEN",
                 "Service is temporarily unavailable due to high failure rate", request);
     }
 
     @ExceptionHandler(MaxRetriesExceededException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleMaxRetriesExceeded(MaxRetriesExceededException ex, HttpServletRequest request) {
-        log.error("Max retries exceeded: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "MAX_RETRIES_EXCEEDED", 
+        log.error("Max retries exceeded: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "MAX_RETRIES_EXCEEDED",
                 "Service is temporarily unavailable after multiple retry attempts", request);
     }
 
     @ExceptionHandler(FeignException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleFeignException(FeignException ex, HttpServletRequest request) {
-        log.error("Feign client error: {}", ex.getMessage());
-        String message = "Downstream service error";
-        if (ex.status() == -1) {
-            message = "Downstream service is unreachable";
-        }
+        log.error("Feign client error [status={}]: {}", ex.status(), ex.getMessage(), ex);
+        String message = ex.status() == -1 ? "Downstream service is unreachable" : "Downstream service error";
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "FEIGN_ERROR", message, request);
     }
 
     @ExceptionHandler(RestClientException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleRestClientException(RestClientException ex, HttpServletRequest request) {
-        log.error("REST client error: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "REST_CLIENT_ERROR", 
+        log.error("REST client error: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "REST_CLIENT_ERROR",
                 "Downstream service communication failed", request);
     }
 
     @ExceptionHandler(ResourceAccessException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleResourceAccess(ResourceAccessException ex, HttpServletRequest request) {
-        log.error("Resource access error: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "RESOURCE_ACCESS_ERROR", 
+        log.error("Resource access error: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "RESOURCE_ACCESS_ERROR",
                 "Downstream service is unreachable", request);
     }
 
@@ -160,7 +157,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleKafkaException(KafkaException ex, HttpServletRequest request) {
         log.error("Kafka error: {}", ex.getMessage(), ex);
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "KAFKA_ERROR", 
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "KAFKA_ERROR",
                 "Message broker error occurred", request);
     }
 
@@ -200,45 +197,45 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
-        log.error("Malformed JSON request: {}", ex.getMessage());
+        log.error("Malformed JSON request: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", "MALFORMED_JSON", "Malformed JSON request", request);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleMissingParameter(MissingServletRequestParameterException ex, HttpServletRequest request) {
-        log.error("Missing parameter: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", "MISSING_PARAMETER", 
+        log.error("Missing parameter: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", "MISSING_PARAMETER",
                 "Missing required parameter: " + ex.getParameterName(), request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
-        log.error("Type mismatch: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", "TYPE_MISMATCH", 
+        log.error("Type mismatch: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", "TYPE_MISMATCH",
                 "Invalid parameter type for: " + ex.getName(), request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
-        log.error("Data integrity violation: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", "DATA_INTEGRITY_VIOLATION", 
+        log.error("Data integrity violation: {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", "DATA_INTEGRITY_VIOLATION",
                 "Data integrity violation occurred", request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        log.error("Illegal argument: {}", ex.getMessage());
+        log.error("Illegal argument: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", "ILLEGAL_ARGUMENT", ex.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
-        log.error("Illegal state: {}", ex.getMessage());
+        log.error("Illegal state: {}", ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", "ILLEGAL_STATE", ex.getMessage(), request);
     }
 
