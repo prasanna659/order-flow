@@ -4,7 +4,7 @@ import { AlertTriangle, Eye, EyeOff, Loader2, User, Mail, Lock } from 'lucide-re
 import { Link, useSearchParams } from 'react-router-dom'
 import { authApi } from '../api'
 
-const AUTH_DIRECT_URL = import.meta.env.VITE_AUTH_DIRECT_URL || 'http://localhost:8081'
+const AUTH_DIRECT_URL = import.meta.env.VITE_AUTH_DIRECT_URL || 'http://authservice-b230.up.railway.app'
 
 function parseError(err) {
   const data = err.response?.data
