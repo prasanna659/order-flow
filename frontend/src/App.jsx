@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import AuthScreen from './components/AuthScreen'
 import AuthCallback from './components/AuthCallback'
@@ -80,6 +80,7 @@ export default function App() {
   const [checkingOut, setCheckingOut]       = useState(false)
   const [activeOrderId, setActiveOrderId]   = useState(null)
   const navigate                            = useNavigate()
+  const [searchParams]                      = useSearchParams()
   const { toasts, success, error: toastError, dismiss } = useToast()
 
   // ── Restore session from localStorage ───────────────────────────────
@@ -218,11 +219,12 @@ export default function App() {
         <Route path="/architecture" element={<ArchitecturePage />} />
         <Route path="/health"       element={<SystemHealthPage />} />
 
-        {/* Auth */}
+        {/* Auth — always show AuthScreen when an OAuth2 error is present,
+              even if the user is already authenticated, so the error is visible */}
         <Route
           path="/auth"
           element={
-            auth
+            auth && !searchParams.get('error')
               ? <Navigate to="/catalog" replace />
               : <AuthScreen onAuthenticated={handleAuthenticated} />
           }

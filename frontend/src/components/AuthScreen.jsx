@@ -70,7 +70,16 @@ export default function AuthScreen({ onAuthenticated }) {
   useEffect(() => {
     const oauthError = searchParams.get('error')
     if (oauthError) {
-      setError(decodeURIComponent(oauthError))
+      const decoded = decodeURIComponent(oauthError)
+      // Map Spring Security internal error codes to user-friendly messages
+      const friendlyMessage = decoded.includes('authorization_request_not_found')
+        ? 'Google sign-in session expired. Please try again.'
+        : decoded.includes('access_denied')
+        ? 'Google sign-in was cancelled.'
+        : decoded.includes('invalid_client')
+        ? 'OAuth2 configuration error. Please contact support.'
+        : decoded
+      setError(friendlyMessage)
       setSearchParams({}, { replace: true })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
