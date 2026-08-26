@@ -3,42 +3,52 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
-/**
- * Handles the redirect from auth-service after a successful Google login.
- *
- * The OAuth2AuthenticationSuccessHandler on the backend redirects to:
- *   /auth/callback?token=...&username=...&userId=...&email=...&picture=...
- *
- * This component:
- *   1. Reads those params from the URL.
- *   2. Stores them in localStorage (same keys as the normal login flow).
- *   3. Calls onAuthenticated() so App.jsx updates its auth state.
- *   4. Navigates to /catalog.
- *
- * If params are missing (e.g. someone navigates here manually) it redirects to /auth.
- */
 export default function AuthCallback({ onAuthenticated }) {
-  const [params] = useSearchParams()
-  const navigate  = useNavigate()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   useEffect(() => {
-    const token    = params.get('token')
-    const username = params.get('username')
-    const userId   = params.get('userId')
-    const email    = params.get('email') || ''
-    const picture  = params.get('picture') || ''
+    const token = searchParams.get('token')
+    const username = searchParams.get('username')
+    const userId = searchParams.get('userId')
+    const email = searchParams.get('email') || ''
+    const picture = searchParams.get('picture') || ''
 
+    // Check whether the backend sent the required parameters
     if (!token || !username || !userId) {
-      // No valid params — bounce back to login
+      console.error('OAuth callback: Missing required parameters', {
+        token: !!token,
+        username,
+        userId,
+      })
+
       navigate('/auth', { replace: true })
       return
     }
 
-    onAuthenticated({ token, username, userId: Number(userId), email, picture })
-    // onAuthenticated calls navigate('/catalog') itself, but we navigate anyway
-    // as a safety net in case it doesn't.
-    navigate('/catalog', { replace: true })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // Convert userId from URL string to number
+    const numericUserId = Number(userId)
+
+    if (Number.isNaN(numericUserId)) {
+      console.error('OAuth callback: Invalid userId:', userId)
+
+      navigate('/auth', { replace: true })
+      return
+    }
+
+    // Send authentication data to App.jsx
+    // App.jsx stores it in localStorage and updates auth state.
+    onAuthenticated({
+      token,
+      username,
+      userId: numericUserId,
+      email,
+      picture,
+    })
+
+    // App.jsx's handleAuthenticated already navigates to /catalog.
+    // This is intentionally not needed here.
+  }, [searchParams, navigate, onAuthenticated])
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -47,11 +57,23 @@ export default function AuthCallback({ onAuthenticated }) {
         animate={{ opacity: 1, scale: 1 }}
         className="flex flex-col items-center gap-4 text-center px-6"
       >
+        {/* Logo */}
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primarylight flex items-center justify-center shadow-glow">
-          <span className="font-display font-bold text-white text-xl">O</span>
+          <span className="font-display font-bold text-white text-xl">
+            O
+          </span>
         </div>
-        <Loader2 size={24} className="text-primary animate-spin" />
-        <p className="text-textdim text-sm font-mono">Completing sign-in…</p>
+
+        {/* Loading spinner */}
+        <Loader2
+          size={24}
+          className="text-primary animate-spin"
+        />
+
+        {/* Message */}
+        <p className="text-textdim text-sm font-mono">
+          Completing sign-in…
+        </p>
       </motion.div>
     </div>
   )
