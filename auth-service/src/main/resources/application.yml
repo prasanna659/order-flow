@@ -60,8 +60,11 @@ spring:
             redirect-uri: "${OAUTH2_REDIRECT_URI:https://authservice-b230.up.railway.app/login/oauth2/code/google}"
 
 # ── JWT ───────────────────────────────────────────────────────────────
+# JWT_SECRET must be set in Railway Variables — min 32 characters.
+# The fallback below is only used for local development.
+# Generate a secure value with: openssl rand -hex 64
 jwt:
-  secret: ${JWT_SECRET:}
+  secret: ${JWT_SECRET:orderflow-dev-secret-key-change-in-production-min32chars!}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 # ── App ───────────────────────────────────────────────────────────────
