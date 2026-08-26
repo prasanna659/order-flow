@@ -11,7 +11,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.ObjectPostProcessor;
 
 @Configuration
 public class SecurityConfig {
@@ -25,10 +27,10 @@ public class SecurityConfig {
                           OAuth2AuthenticationSuccessHandler successHandler,
                           OAuth2AuthenticationFailureHandler failureHandler,
                           HttpCookieOAuth2AuthorizationRequestRepository cookieAuthRequestRepository) {
-        this.googleOidcUserService        = googleOidcUserService;
-        this.successHandler               = successHandler;
-        this.failureHandler               = failureHandler;
-        this.cookieAuthRequestRepository  = cookieAuthRequestRepository;
+        this.googleOidcUserService       = googleOidcUserService;
+        this.successHandler              = successHandler;
+        this.failureHandler              = failureHandler;
+        this.cookieAuthRequestRepository = cookieAuthRequestRepository;
     }
 
     @Bean
@@ -40,18 +42,26 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            // STATELESS: no HttpSession at all — OAuth2 state lives in a cookie.
-            // This is required for Railway (and any multi-instance deployment) where
-            // the session from the /oauth2/authorization request won't survive to the
-            // /login/oauth2/code/google callback if a different instance handles it.
+            // STATELESS: no HttpSession at all — OAuth2 state is stored in a cookie.
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
             .oauth2Login(oauth2 -> oauth2
-                    // Replace the default InMemoryAuthorizationRequestRepository (session-backed)
-                    // with our cookie-based implementation so state survives across instances.
+                    // Wire cookie repo into the outbound redirect filter (builds the Google URL).
                     .authorizationEndpoint(endpoint -> endpoint
                             .authorizationRequestRepository(cookieAuthRequestRepository)
                     )
+                    // Wire cookie repo into the inbound callback filter (handles Google's redirect back).
+                    // ObjectPostProcessor is the only reliable way to reach OAuth2LoginAuthenticationFilter
+                    // because Spring Security constructs it internally and doesn't expose a setter on the DSL.
+                    // Without this, the callback filter uses its own default session-backed repository,
+                    // finds no session, and throws [authorization_request_not_found].
+                    .withObjectPostProcessor(new ObjectPostProcessor<OAuth2LoginAuthenticationFilter>() {
+                        @Override
+                        public <O extends OAuth2LoginAuthenticationFilter> O postProcess(O filter) {
+                            filter.setAuthorizationRequestRepository(cookieAuthRequestRepository);
+                            return filter;
+                        }
+                    })
                     .userInfoEndpoint(ui -> ui.oidcUserService(googleOidcUserService))
                     .successHandler(successHandler)
                     .failureHandler(failureHandler)

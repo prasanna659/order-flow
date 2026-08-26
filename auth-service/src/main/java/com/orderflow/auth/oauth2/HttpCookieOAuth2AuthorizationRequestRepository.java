@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.SerializationUtils;
 
 import java.util.Base64;
+import java.util.Optional;
 
 /**
  * Stores the OAuth2 authorization request in a short-lived cookie instead of
@@ -18,22 +19,27 @@ import java.util.Base64;
  *
  * WHY THIS IS NEEDED:
  * Spring Security's default InMemoryAuthorizationRequestRepository ties state
- * to the HttpSession. On Railway (and any stateless/multi-instance deployment)
- * the session is gone by the time Google redirects back, causing:
- *   "authorization_request_not_found" → 401 → frontend 404 on /auth?error=...
+ * to the HttpSession. On Railway the session is gone by the time Google redirects
+ * back (stateless deployment / different instance), causing:
+ *   [authorization_request_not_found]
  *
  * Storing the serialized OAuth2AuthorizationRequest in a cookie solves this
- * because cookies are sent by the browser on every request regardless of which
- * server instance handles it.
+ * because the browser sends the cookie on every request regardless of instance.
+ *
+ * WHY SameSite=None; Secure (not Lax):
+ * The Google → auth-service callback is a cross-site navigation.
+ * SameSite=Lax should theoretically send the cookie on top-level GET redirects,
+ * but behind Railway's reverse proxy the browser sometimes classifies it as
+ * a cross-site context and drops Lax cookies. SameSite=None; Secure is the
+ * only setting that guarantees the cookie survives the cross-site redirect in
+ * all browsers and proxy configurations.
  *
  * COOKIE PROPERTIES:
- *   - HttpOnly: not accessible via JS (XSS protection)
- *   - Secure: HTTPS only in production
- *   - SameSite=Lax: sent on top-level navigations (the OAuth2 redirect IS a
- *     top-level navigation, so Lax works and is safer than None)
- *   - Max-Age: 3 minutes — long enough for the OAuth2 round trip, short enough
- *     to not linger
- *   - Path=/: must be accessible on both /oauth2/** and /login/oauth2/**
+ *   - HttpOnly      — no JS access (XSS protection)
+ *   - Secure        — HTTPS only (required by SameSite=None)
+ *   - SameSite=None — sent on all cross-site requests
+ *   - Max-Age=180   — 3 minutes: enough for the OAuth2 round trip, then auto-expires
+ *   - Path=/        — accessible on both /oauth2/** and /login/oauth2/**
  */
 @Component
 public class HttpCookieOAuth2AuthorizationRequestRepository
@@ -41,8 +47,8 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 
     private static final Logger log = LoggerFactory.getLogger(HttpCookieOAuth2AuthorizationRequestRepository.class);
 
-    public static final String COOKIE_NAME    = "oauth2_auth_request";
-    public static final int    COOKIE_EXPIRY  = 180; // 3 minutes
+    public static final String COOKIE_NAME   = "oauth2_auth_request";
+    public static final int    COOKIE_EXPIRY = 180; // seconds
 
     // ── Read ────────────────────────────────────────────────────────────
 
@@ -60,23 +66,16 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
                                          HttpServletRequest request,
                                          HttpServletResponse response) {
         if (authorizationRequest == null) {
-            deleteCookie(request, response, COOKIE_NAME);
+            deleteCookie(response, COOKIE_NAME);
             return;
         }
         String value = serialize(authorizationRequest);
-        Cookie cookie = new Cookie(COOKIE_NAME, value);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setMaxAge(COOKIE_EXPIRY);
-        cookie.setSecure(true); // Railway is always HTTPS
-
-        // SameSite=Lax allows the cookie to be sent on top-level cross-site
-        // navigations (the Google → auth-service redirect). Must be set via
-        // the Set-Cookie header directly because the Servlet Cookie API has
-        // no setSameSite() in Java EE / Jakarta EE 9.
+        // Must use addHeader directly — Jakarta Servlet Cookie API has no setSameSite().
+        // SameSite=None requires Secure; both are needed for cross-site Railway deployment.
         response.addHeader("Set-Cookie",
-                String.format("%s=%s; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=%d",
+                String.format("%s=%s; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=%d",
                         COOKIE_NAME, value, COOKIE_EXPIRY));
+        log.debug("OAUTH2_COOKIE_SAVED state={}", authorizationRequest.getState());
     }
 
     // ── Remove ──────────────────────────────────────────────────────────
@@ -85,34 +84,36 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     public OAuth2AuthorizationRequest removeAuthorizationRequest(HttpServletRequest request,
                                                                   HttpServletResponse response) {
         OAuth2AuthorizationRequest existing = loadAuthorizationRequest(request);
-        deleteCookie(request, response, COOKIE_NAME);
+        if (existing != null) {
+            deleteCookie(response, COOKIE_NAME);
+            log.debug("OAUTH2_COOKIE_REMOVED state={}", existing.getState());
+        } else {
+            log.warn("OAUTH2_COOKIE_NOT_FOUND — cookie was missing on callback. " +
+                    "Check that Set-Cookie was sent on the /oauth2/authorization request " +
+                    "and that the browser is sending it back on /login/oauth2/code/google.");
+        }
         return existing;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────
 
-    private java.util.Optional<String> readCookie(HttpServletRequest request, String name) {
+    private Optional<String> readCookie(HttpServletRequest request, String name) {
         Cookie[] cookies = request.getCookies();
-        if (cookies == null) return java.util.Optional.empty();
+        if (cookies == null) {
+            log.debug("OAUTH2_COOKIE_READ no cookies present on request to {}", request.getRequestURI());
+            return Optional.empty();
+        }
         for (Cookie c : cookies) {
             if (name.equals(c.getName())) {
-                return java.util.Optional.of(c.getValue());
+                return Optional.of(c.getValue());
             }
         }
-        return java.util.Optional.empty();
+        return Optional.empty();
     }
 
-    private void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) return;
-        for (Cookie c : cookies) {
-            if (name.equals(c.getName())) {
-                // Expire via header so we can set SameSite consistently
-                response.addHeader("Set-Cookie",
-                        String.format("%s=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0", name));
-                return;
-            }
-        }
+    private void deleteCookie(HttpServletResponse response, String name) {
+        response.addHeader("Set-Cookie",
+                String.format("%s=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0", name));
     }
 
     private String serialize(OAuth2AuthorizationRequest request) {
@@ -125,7 +126,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
             byte[] bytes = Base64.getUrlDecoder().decode(value);
             return (OAuth2AuthorizationRequest) SerializationUtils.deserialize(bytes);
         } catch (Exception e) {
-            log.warn("Failed to deserialize OAuth2 authorization request from cookie: {}", e.getMessage());
+            log.warn("OAUTH2_COOKIE_DESERIALIZE_FAILED: {}", e.getMessage());
             return null;
         }
     }
