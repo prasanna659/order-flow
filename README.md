@@ -14,9 +14,9 @@ Browser (React :3000)
        ▼
 API Gateway :8080  ── JWT validation · routing · CORS
        │
-       ├──▶ Auth Service        :8081  ── MySQL  (authdb)
+       ├──▶ Auth Service        :8081  ── PostgreSQL (authdb)
        ├──▶ Inventory Service   :8082  ── PostgreSQL (inventorydb)
-       ├──▶ Order Service       :8083  ── MySQL  (orderdb)  ──▶ Kafka
+       ├──▶ Order Service       :8083  ── PostgreSQL (orderdb)  ──▶ Kafka
        ├──▶ Payment Service     :8084  ── in-memory (~15% failure sim)
        └──▶ Notification Svc    :8085  ── Kafka consumer ──▶ Gmail SMTP
 
@@ -28,9 +28,9 @@ Platform: Eureka :8761 · Config Server :8888 · Kafka :9092
 | Service | Port | Role | Persistence |
 |---|---|---|---|
 | API Gateway | 8080 | Routing, JWT filter, CORS | — |
-| Auth Service | 8081 | Register / login / Google OAuth2 / password reset | MySQL |
+| Auth Service | 8081 | Register / login / Google OAuth2 / password reset | PostgreSQL |
 | Inventory Service | 8082 | Product catalog, stock reserve & release | PostgreSQL |
-| Order Service | 8083 | Saga orchestrator, order lifecycle | MySQL |
+| Order Service | 8083 | Saga orchestrator, order lifecycle | PostgreSQL |
 | Payment Service | 8084 | Charge simulation (~15% random decline) | In-memory |
 | Notification Service | 8085 | Kafka consumer, transactional email via Gmail SMTP | — |
 | Eureka Server | 8761 | Service discovery registry | — |
@@ -42,7 +42,7 @@ Platform: Eureka :8761 · Config Server :8888 · Kafka :9092
 
 ### Saga (Orchestration)
 
-Orders run a 3-step saga on a background async thread. The HTTP response returns immediately with `PENDING` — the frontend polls every second to animate status transitions.
+Orders run a 3-step saga on a background async thread (`OrderSagaOrchestrator`, a separate bean so Spring's `@Async` proxy actually applies). The HTTP response returns immediately with `PENDING` — the frontend polls every second to animate status transitions.
 
 ```
 PENDING → RESERVING → CHARGING → CONFIRMED
@@ -90,8 +90,7 @@ Google OAuth2 bypasses the gateway entirely (direct to Auth Service :8081) becau
 
 ### Database Per Service
 
-- Auth + Order → MySQL 8 (separate schemas: `authdb`, `orderdb`)
-- Inventory → PostgreSQL 16 (`inventorydb`)
+- One PostgreSQL 16 server with a separate database per service: `authdb`, `orderdb`, `inventorydb`
 - Payment → in-memory map (demo only)
 - No shared database, no shared schema coupling
 
@@ -121,34 +120,22 @@ The catalog UI supports:
 ## Getting Started
 
 ### Prerequisites
-
-- Docker Desktop (or Docker Engine + Compose plugin)
-- A Gmail account with a [Gmail App Password](https://myaccount.google.com/apppasswords) (2FA required)
-- A Google OAuth2 client from [Google Cloud Console](https://console.cloud.google.com/) *(optional — email/password auth works without it)*
+- Docker and Docker Compose v2
+- (Optional) Java 17 + Maven and Node 20 if you want to run tests or the frontend outside Docker
 
 ### 1. Configure `.env`
 
-The `.env` file is at `orderflow/.env`. Fill in your values:
-
-```env
-# Google OAuth2 (optional)
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-...
-
-# Frontend URL — used for OAuth2 redirects and email links
-FRONTEND_URL=http://localhost:3000
-
-# Email — requires a Gmail App Password (not your real Gmail password)
-MAIL_ENABLED=true
-MAIL_USERNAME=you@gmail.com
-MAIL_PASSWORD=xxxx xxxx xxxx xxxx
+```bash
+cp .env.example .env
 ```
 
-To disable emails, set `MAIL_ENABLED=false`. Everything still works — email sends are skipped and logged.
+Set at least `DB_PASSWORD` and `JWT_SECRET` (min 32 chars; `openssl rand -hex 64` works). Compose refuses to start without them.
+Google sign-in and e-mail are optional: leave `GOOGLE_CLIENT_ID` blank to disable Google login, and keep `MAIL_ENABLED=false`
+to skip e-mails (for Gmail use an App Password, never your account password).
 
-### 2. Google OAuth2 redirect URI (if using Google login)
+### 2. Google OAuth2 redirect URI (only if using Google login)
 
-In Google Cloud Console → Credentials → your OAuth2 client, add to **Authorized redirect URIs**:
+In Google Cloud Console, open Credentials, then your OAuth2 client, and add this to **Authorized redirect URIs**:
 
 ```
 http://localhost:8081/login/oauth2/code/google
@@ -157,22 +144,22 @@ http://localhost:8081/login/oauth2/code/google
 ### 3. Start everything
 
 ```bash
-cd orderflow
 docker compose up --build
 ```
 
-First build takes 3–5 minutes (Maven downloads dependencies). Services start in healthcheck dependency order:
+The first build takes a few minutes (Maven downloads dependencies). Services start in healthcheck order:
 
 ```
-infrastructure (MySQL, Postgres, Kafka)
-  → config-server
-    → eureka-server
-      → business services (auth, inventory, payment, order, notification)
-        → api-gateway
-          → frontend
+postgres + kafka
+  -> auth, inventory, payment
+    -> order
+      -> api-gateway
+        -> frontend
 ```
 
-Open **http://localhost:3000** once the frontend container is healthy.
+Open **http://localhost:3000** once the frontend is up. Eureka and Config Server are **not** needed by the app (each service has them
+disabled and reads plain environment variables, the same way it does on Railway). Start them only if you want to look at them:
+`docker compose --profile platform up`.
 
 ### 4. Explore
 
@@ -181,7 +168,7 @@ Open **http://localhost:3000** once the frontend container is healthy.
 | http://localhost:3000 | React app — landing, catalog, cart, orders |
 | http://localhost:3000/architecture | Interactive architecture diagram |
 | http://localhost:3000/health | Live health dashboard (all services + infra) |
-| http://localhost:8761 | Eureka service registry |
+| http://localhost:8761 | Eureka service registry (only with `--profile platform`) |
 | http://localhost:8080/docs/auth/swagger-ui.html | Auth Service Swagger UI |
 | http://localhost:8080/docs/orders/swagger-ui.html | Order Service Swagger UI |
 | http://localhost:8080/docs/inventory/swagger-ui.html | Inventory Service Swagger UI |
@@ -194,23 +181,20 @@ Open **http://localhost:3000** once the frontend container is healthy.
 
 ```
 orderflow/
-├── api-gateway/            Spring Cloud Gateway — routing & JWT filter
+├── api-gateway/            Spring Cloud Gateway: routing, JWT filter, CORS
 ├── auth-service/           Register, login, Google OAuth2, password reset
 ├── inventory-service/      Product catalog, stock reserve/release
 ├── order-service/          Saga orchestrator, order CRUD
 ├── payment-service/        Charge simulation (15% random failure)
 ├── notification-service/   Kafka consumer, Thymeleaf email templates
-├── eureka-server/          Netflix Eureka service registry
-├── config-server/          Spring Cloud Config Server
-├── config-repo/            YAML configs served to all services at startup
-│   ├── application.yml         Shared: Eureka, JWT, Actuator
-│   ├── auth-service.yml        MySQL, Kafka producer, Google OAuth2
-│   ├── order-service.yml       MySQL, Kafka producer, Resilience4j
-│   ├── inventory-service.yml   PostgreSQL
-│   └── notification-service.yml Kafka consumer, Gmail SMTP, frontend URL
+├── eureka-server/          Netflix Eureka registry (optional, profile "platform")
+├── config-server/          Spring Cloud Config Server (optional, profile "platform")
+├── config-repo/            YAML served by Config Server (optional)
 ├── frontend/               React 18 + Vite + Tailwind SPA
-├── docker-compose.yml      Full stack orchestration
-└── .env                    Runtime secrets (never commit real credentials)
+├── docker/postgres-init/   Creates authdb, orderdb, inventorydb on first start
+├── .github/workflows/      CI: build + test every service, build frontend, validate compose
+├── docker-compose.yml      Full local stack
+└── .env.example            Copy to .env (never commit .env)
 ```
 
 ---
@@ -240,9 +224,11 @@ All routes go through the API Gateway on `:8080`. JWT required unless marked pub
 
 ### Orders — `/api/orders`
 
+Users can only read and create **their own** orders. The gateway puts the verified user id in `X-User-Id`; order-service returns 403 for another user's `userId` and 404 for another user's order id.
+
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/orders` | JWT | Place order (saga starts async, returns PENDING) |
+| POST | `/api/orders` | JWT | Place order (saga starts async, returns PENDING). `userId` must be your own |
 | GET | `/api/orders/{id}` | JWT | Poll order status |
 | GET | `/api/orders/user/{userId}` | JWT | All orders for user |
 | GET | `/api/orders` | JWT | Paginated order history with status filter |
@@ -291,16 +277,16 @@ Enable by setting `MAIL_ENABLED=true`, `MAIL_USERNAME`, and `MAIL_PASSWORD` (Gma
 
 ## Environment Variables
 
-### Backend (`.env` at project root)
+### Backend (`.env` at project root; see `.env.example`)
 
-| Variable | Default | Description |
+| Variable | Required | Description |
 |---|---|---|
-| `GOOGLE_CLIENT_ID` | — | Google OAuth2 client ID |
-| `GOOGLE_CLIENT_SECRET` | — | Google OAuth2 client secret |
-| `FRONTEND_URL` | `http://localhost:3000` | OAuth2 redirect target and email link base URL |
-| `MAIL_ENABLED` | `true` | Set to `false` to skip all email sending |
-| `MAIL_USERNAME` | — | Gmail address |
-| `MAIL_PASSWORD` | — | Gmail App Password (not your account password) |
+| `DB_PASSWORD` | yes | Postgres password |
+| `JWT_SECRET` | yes | Shared by auth-service and api-gateway, min 32 chars. With `SPRING_PROFILES_ACTIVE=prod`, auth-service and api-gateway refuse to start without it |
+| `FRONTEND_URL` | no (`http://localhost:3000`) | CORS origin, OAuth2 redirect target, e-mail link base |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | no | Google sign-in; blank disables it |
+| `MAIL_ENABLED` | no (`false` in compose) | `false` skips all e-mail |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | no | Gmail address and App Password |
 
 ### Frontend (baked into JS bundle at build time by Vite)
 
@@ -321,9 +307,7 @@ For instant HMR during development, run `npm run dev` in `frontend/` directly (p
 
 **Reseeding the catalog** — `data.sql` runs `DELETE FROM products` then re-inserts on every startup (`sql.init.mode: always`, `defer-datasource-initialization: true`). This means the catalog is always in sync with the SQL file. Product IDs change on each restart but there are no FK constraints on `Reservation.productId`.
 
-**Payment failure rate** — ~15% of charges are randomly declined. Place a few orders to see the saga compensation path trigger. The threshold is in `PaymentService`.
-
-**MySQL port** — mapped host `3307` → container `3306` to avoid conflicts with a local MySQL installation on Windows.
+**Payment failure rate** — ~15% of charges are randomly declined. Place a few orders to see the saga compensation path trigger. The threshold is `FAILURE_RATE` in `PaymentService`.
 
 **Kafka** — KRaft mode (no Zookeeper). Single broker, replication factor 1. Both topics (`order-events`, `auth-events`) are pre-created by `KafkaTopicConfig` in notification-service at startup to avoid race conditions between producer and consumer.
 
@@ -331,9 +315,53 @@ For instant HMR during development, run `npm run dev` in `frontend/` directly (p
 
 **Framer Motion `transparent` colors** — all `backgroundColor` animations use explicit `rgba(...)` values instead of the `'transparent'` CSS keyword. Framer Motion requires both animation endpoints to be the same color format to interpolate correctly.
 
-**Config changes** — edit files in `config-repo/` without rebuilding images; mounted as a live volume. Changes take effect on the next service restart (`docker compose restart <service>`).
+---
 
-**Running one service locally** — set `spring.config.import: configserver:http://localhost:8888` and run `./mvnw spring-boot:run` from the service directory while the rest of the stack runs in Docker.
+## Testing and CI
+
+Unit tests need no database, Kafka or Docker:
+
+```bash
+cd order-service && mvn test      # saga: happy path, payment decline + compensation, reservation failure,
+                                  # compensation failure; Kafka publisher; order ownership rules
+cd inventory-service && mvn test  # reserve / release / insufficient stock
+cd payment-service && mvn test
+cd api-gateway && mvn test        # JWT validation
+cd auth-service && mvn test       # token issuing, secret checks
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `mvn verify` for every service, builds the frontend, and validates `docker-compose.yml` on each push and pull request.
+
+---
+
+## Deployment
+
+The app is deployed with **Railway** (backend services, Postgres, Kafka) and **Vercel** (frontend). Each service reads plain environment variables.
+
+**Railway: set these before deploying**
+
+| Service | Variables |
+|---|---|
+| all Java services | `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET` (identical on auth-service and api-gateway) |
+| auth, order, inventory | `SPRING_DATASOURCE_URL` (`jdbc:postgresql://...`), `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` |
+| auth, order, notification | `KAFKA_BOOTSTRAP_SERVERS` |
+| order-service | `INVENTORY_SERVICE_URL`, `PAYMENT_SERVICE_URL` |
+| api-gateway | `AUTH_SERVICE_URL`, `ORDER_SERVICE_URL`, `INVENTORY_SERVICE_URL`, `PAYMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL`, `FRONTEND_URL` |
+| auth-service | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OAUTH2_REDIRECT_URI` |
+| notification-service | `MAIL_ENABLED`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `FRONTEND_URL` |
+
+**Vercel:** set `VITE_API_BASE_URL` (gateway URL, with `https://`) and `VITE_AUTH_DIRECT_URL` (auth-service URL).
+
+**Keep order-service, inventory-service and payment-service private** (Railway private networking) and expose only the gateway, plus auth-service for the Google redirect. Those services trust the `X-User-Id` header, so they must only be reachable through the gateway.
+
+---
+
+## Known limitations
+
+- Hibernate `ddl-auto: update` creates the schema. For real production use, move to Flyway migrations.
+- Payment is a simulation (random 15% decline, in-memory ledger).
+- Product stock is re-seeded from `data.sql` on every inventory-service start.
+- Compensation (`releaseStock`) failures are logged, not retried. A dead-letter queue or reconciliation job would close that gap.
 
 ---
 
@@ -343,7 +371,7 @@ For instant HMR during development, run `npm run dev` in `frontend/` directly (p
 - Java 17, Spring Boot 3.2.5, Spring Cloud 2023.0.1
 - Spring Cloud Gateway (WebFlux), Netflix Eureka, Spring Cloud Config
 - Spring Kafka 3, Resilience4j 2.2 (circuit breaker), Spring Retry
-- Spring Data JPA, MySQL 8, PostgreSQL 16
+- Spring Data JPA, PostgreSQL 16
 - Spring Security 6, Spring Mail, Thymeleaf 3
 - Springdoc OpenAPI 2.5 (Swagger UI per service)
 - Apache Kafka 3.7 (KRaft mode)

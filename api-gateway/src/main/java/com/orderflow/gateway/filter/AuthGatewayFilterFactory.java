@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -41,7 +42,7 @@ public class AuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Objec
             String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, 
+                return writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED,
                         "MISSING_TOKEN", "Authorization header is missing or invalid");
             }
 
@@ -59,14 +60,15 @@ public class AuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Objec
 
                 return chain.filter(exchange.mutate().request(mutatedRequest).build());
             } catch (JwtValidator.InvalidTokenException e) {
-                return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, 
+                return writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED,
                         "INVALID_TOKEN", "Invalid or expired JWT token");
             }
         };
     }
 
-    private Mono<Void> writeErrorResponse(ServerHttpResponse response, HttpStatus status, 
+    private Mono<Void> writeErrorResponse(ServerWebExchange exchange, HttpStatus status,
             String code, String message) {
+        ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         
@@ -81,8 +83,8 @@ public class AuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Objec
         errorResponse.put("error", status.getReasonPhrase());
         errorResponse.put("code", code);
         errorResponse.put("message", message);
-        errorResponse.put("path", "/api/auth/**");
-        errorResponse.put("method", "*");
+        errorResponse.put("path", exchange.getRequest().getPath().value());
+        errorResponse.put("method", exchange.getRequest().getMethod().name());
         errorResponse.put("traceId", traceId);
         errorResponse.put("requestId", requestId);
         
