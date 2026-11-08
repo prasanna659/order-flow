@@ -51,6 +51,13 @@ public class GlobalExceptionHandler {
         return response;
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+        log.warn("Forbidden: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getErrorCode(), ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {

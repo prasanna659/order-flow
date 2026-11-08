@@ -30,6 +30,9 @@ public class JwtUtil {
     @Value("${jwt.secret:}")
     private String secret;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     @Value("${jwt.expiration-ms:3600000}")
     private long expirationMs;
 
@@ -40,6 +43,11 @@ public class JwtUtil {
         // Validate and cache the key at startup so a misconfigured secret
         // fails fast with a clear message rather than blowing up mid-request.
         if (secret == null || secret.isBlank()) {
+            if (activeProfiles != null && java.util.Arrays.asList(activeProfiles.split(",")).contains("prod")) {
+                throw new IllegalStateException(
+                    "JWT_SECRET must be set (min 32 chars) when the prod profile is active. "
+                    + "The built-in dev fallback is public and must never be used in production.");
+            }
             log.warn("JWT_SECRET is not set — using dev fallback key. " +
                      "Set JWT_SECRET in Railway Variables before going to production.");
             secret = DEV_FALLBACK;

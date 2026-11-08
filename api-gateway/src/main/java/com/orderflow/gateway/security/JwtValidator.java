@@ -27,11 +27,19 @@ public class JwtValidator {
     @Value("${jwt.secret:}")
     private String secret;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     private SecretKey cachedKey;
 
     @PostConstruct
     public void init() {
         if (secret == null || secret.isBlank()) {
+            if (activeProfiles != null && java.util.Arrays.asList(activeProfiles.split(",")).contains("prod")) {
+                throw new IllegalStateException(
+                    "JWT_SECRET must be set (min 32 chars) when the prod profile is active. "
+                    + "The built-in dev fallback is public and must never be used in production.");
+            }
             log.warn("JWT_SECRET is not set in api-gateway — using dev fallback key. " +
                      "Ensure JWT_SECRET matches the auth-service value in Railway Variables.");
             secret = DEV_FALLBACK;

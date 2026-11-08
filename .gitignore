@@ -24,3 +24,8 @@ logs/
 mysql-data/
 postgres-data/
 kafka-data/
+# Local env and uploads
+.env
+*.env
+!*.env.example
+.env.example.local
